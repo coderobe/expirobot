@@ -1,0 +1,7 @@
+/.bundle/
+/coverage/
+/tmp/
+/vendor/
+Gemfile.local*
+Gemfile.lock
+config.yml
