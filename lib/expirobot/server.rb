@@ -5,6 +5,7 @@ require "sinatra/base"
 require "rufus-scheduler"
 require "net/http"
 require "gpgme"
+require "date"
 
 module Expirobot
   class Server < ::Sinatra::Base
@@ -20,10 +21,12 @@ module Expirobot
       logger.info "Starting..."
       reload
 
-      # TODO: key check schedule here
-      #schedule.every "1d" do
-      #  puts "foo"
-      #end
+      # TODO: configurable check schedule?
+      schedule.every "1d" do
+        logger.info "Running scheduled check"
+        reload
+        check_keys
+      end
 
       logger.info "Started, hand-off!"
       super
@@ -60,6 +63,49 @@ module Expirobot
       end
     end
 
+    def check_keys
+      config.rules.each do |rule|
+        key = GPGME::Key.get rule.key
+        expired = key.subkeys.map(&:expired).reduce{|a,b| a||b}
+        next_expiry = key.subkeys.map(&:expires).reject(&:nil?).sort.first
+        next_expiry_in_days = ((next_expiry.to_datetime - DateTime.now)*24*60*60).to_i / 60 / 60 / 24
+        logger.info "Next expiry on #{key.fingerprint} or one of its subkeys in #{next_expiry_in_days} days, no action required" unless expired || next_expiry_in_days < 30
+
+        if expired || next_expiry_in_days < 30
+          if expired
+            logger.warn "Key #{key.fingerprint} or one of its subkeys has expired"
+          else
+            logger.warn "Key #{key.fingerprint} or one of its subkeys expires in #{next_expiry_in_days} days"
+          end
+
+          client = rule.client
+          unless client
+            logger.error "Unable to acquire Matrix client from rule"
+            next
+          end
+
+          rule.notify.each do |id|
+            room = get_room client, id
+            unless room
+              logger.error "Unable to acquire Matrix room for #{room} from rule and client"
+              next
+            end
+
+            # Support rules with nil client explicitly specified, for testing
+            next unless client.is_a? MatrixSdk::Api
+
+            client.send_message_event(room, "m.room.message",
+                                      { msgtype: rule.msgtype,
+                                        body: "GPG Key #{key.fingerprint} or one of its subkeys #{expired ? "has expired" : "expires in #{next_expiry_in_days} days"}",
+                                        # TODO: formatted response body
+                                        # formatted_body: html,
+                                        # format: "org.matrix.custom.html"
+                                      })
+          end
+        end
+      end
+    end
+
     def get_room client, mxid
       room = mxid if mxid.start_with? ?!
       room ||= client.join_room(mxid).room_id if mxid.start_with? ?#
@@ -82,28 +128,6 @@ module Expirobot
 
       rules = (config.rules(key_id) rescue [])
       halt 404, { status: :fail, message: "No rules configured for key id" }.to_json if rules.empty?
-
-      rules.each do |rule|
-        client = rule.client
-        halt 500, { status: :fail, message: "Unable to acquire Matrix client from rule" }.to_json unless client
-
-        rule.notify.each do |id|
-          room = get_room client, id
-          halt 500, { status: :fail, message: "Unable to acquire Matrix room for #{room} from rule and client" }.to_json unless room
-
-          # Support rules with nil client explicitly specified, for testing
-          next unless client.is_a? MatrixSdk::Api
-
-          # TODO: remove test message
-          client.send_message_event(room, "m.room.message",
-                                    { msgtype: rule.msgtype,
-                                      body: "check executed on #{key_id}",
-                                      # TODO: formatted response body
-                                      # formatted_body: html,
-                                      # format: "org.matrix.custom.html"
-                                    })
-        end
-      end
 
       {
         status: :success,
