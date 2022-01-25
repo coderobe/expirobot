@@ -1,0 +1,32 @@
+---
+# Matrix HS connections
+matrix:
+- name: matrix-org
+  url: "https://matrix.org"
+  # Create a user beforehand
+  # Log in using curl to acquire access token:
+  # curl -XPOST -d '{"type": "m.login.password",
+  #                  "user":"expirobot",
+  #                  "password":"hunter2"}'
+  #      "https://<hs>/_matrix/client/r0/login"
+  # Fill that access token in here
+  access_token: "<token>"
+  #device_id: <device> # Optional device identifier
+#- name: matrix-priv
+#  url: "https://private.matrix.org"
+#  access_token: "<token>"
+
+# The default message type for messages, either m.text or m.notice
+msgtype: m.text
+
+# Set up notification rules
+rules:
+- key: "0000000000000000000000000000000000000000"  # GPG key id to monitor
+  notify:                                          # Notification targets
+    - "#hq:matrix.org"                             # Room or ID
+  matrix: matrix-org                               # The Matrix HS to use - defaults to first one
+  msgtype: m.notice
+#- key: "..."
+#  notify:
+#    - "#hq:private.matrix.org"
+#  matrix: matrix-priv
