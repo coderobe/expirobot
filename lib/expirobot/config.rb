@@ -48,7 +48,7 @@ module Expirobot
       raise "No such file" unless File.exist? filename
 
       @config = Psych.load(File.read(filename))
-      true
+      self
     end
 
     def default_msgtype
