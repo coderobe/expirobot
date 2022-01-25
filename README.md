@@ -8,7 +8,7 @@ A http status endpoint is also exposed at :9292
 
 - [x] HTTP endpoint
 - [x] Matrix messages
-- [ ] Pull keys and subkeys from keyserver
+- [x] Pull keys and subkeys from keyserver
 - [ ] Scheduled expiry checks
 - [ ] Configurable notification interval
 
