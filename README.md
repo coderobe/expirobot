@@ -4,6 +4,14 @@ A bot that monitors GPG key expiry via matrix notifications
 
 A http status endpoint is also exposed at :9292
 
+## Status
+
+- [x] HTTP endpoint
+- [x] Matrix messages
+- [ ] Pull keys and subkeys from keyserver
+- [ ] Scheduled expiry checks
+- [ ] Configurable notification interval
+
 ## Installation / Usage / Development
 
 Clone the git repo, instantiate the bundle, configure and launch the server
