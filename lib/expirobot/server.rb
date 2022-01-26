@@ -78,7 +78,7 @@ module Expirobot
         expired = key.subkeys.reject{|k| rule.ignored? k.fingerprint}.map(&:expired).reduce{|a,b| a||b}
         next_expiry = key.subkeys.reject{|k| rule.ignored? k.fingerprint}.map(&:expires).reject(&:nil?).sort.first
         next_expiry_in_days = (next_expiry.to_datetime - DateTime.now).to_i
-        logger.info "Next expiry on #{key.fingerprint} or one of its subkeys in #{next_expiry_in_days} days, no action required" unless expired || next_expiry_in_days < 30
+        logger.info "Key #{key.fingerprint} or one of its subkeys expires in #{next_expiry_in_days} days, no action required" unless expired || next_expiry_in_days < 30
 
         if expired || next_expiry_in_days < 30
           if expired
@@ -99,9 +99,6 @@ module Expirobot
               logger.error "Unable to acquire Matrix room for #{room} from rule and client"
               next
             end
-
-            # Support rules with nil client explicitly specified, for testing
-            next unless client.is_a? MatrixSdk::Api
 
             client.send_message_event(room, "m.room.message",
                                       { msgtype: rule.msgtype,

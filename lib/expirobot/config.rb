@@ -23,7 +23,7 @@ module Expirobot
       end
 
       def matrix
-        data.fetch(:matrix)
+        data.fetch(:matrix, nil)
       end
 
       def msgtype
@@ -31,8 +31,6 @@ module Expirobot
       end
 
       def client
-        return Object.new if matrix.nil?
-
         @client ||= config.client(matrix)
       end
     end
