@@ -24,6 +24,8 @@ rules:
 - key: "0000000000000000000000000000000000000000"  # GPG key id to monitor
   notify:                                          # Notification targets
     - "#hq:matrix.org"                             # Room or ID
+  ignore:
+    - "1111111111111111111111111111111111111111"   # Known-expired subkeys to ignore
   matrix: matrix-org                               # The Matrix HS to use - defaults to first one
   msgtype: m.notice
 #- key: "..."

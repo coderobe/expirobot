@@ -11,7 +11,15 @@ module Expirobot
       end
 
       def notify
-        data.fetch(:notify)
+        data.fetch(:notify, [])
+      end
+
+      def ignore
+        data.fetch(:ignore, [])
+      end
+
+      def ignored? key
+        ignore.include? key
       end
 
       def matrix
@@ -79,6 +87,10 @@ module Expirobot
 
     def rule(key_id)
       rules(key_id).first
+    end
+
+    def delete_rule(key_id)
+      @config["rules"].delete @config["rules"].find{|m| m["key"] == key_id}
     end
   end
 end

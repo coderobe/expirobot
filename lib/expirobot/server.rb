@@ -54,16 +54,20 @@ module Expirobot
           logger.info "Found key #{key.fingerprint} #{key.expires}"
           key.uids.each do |uid|
             logger.info "... has UID #{uid.name} (#{uid.email})"
-            logger.warn "UID invalid" if uid.invalid?
-            logger.warn "UID revoked" if uid.revoked?
+            logger.warn "    ^ UID invalid" if uid.invalid?
+            logger.warn "    ^ UID revoked" if uid.revoked?
           end
           key.subkeys.each do |sub|
             logger.info "... has subkey #{sub.fingerprint}"
-            logger.warn "Subkey expired on #{sub.expires}" if sub.expired
+            if rule.ignored? sub.fingerprint
+              logger.info "    ^ Subkey ignored by rule"
+            else
+              logger.warn "    ^ Subkey expired on #{sub.expires}" if sub.expired
+            end
           end
         rescue EOFError
           logger.error "Cannot find key #{key_id}, skipping"
-          config.rules.delete rule
+          config.delete_rule key_id
         end
       end
     end
@@ -71,8 +75,8 @@ module Expirobot
     def check_keys
       config.rules.each do |rule|
         key = GPGME::Key.get rule.key
-        expired = key.subkeys.map(&:expired).reduce{|a,b| a||b}
-        next_expiry = key.subkeys.map(&:expires).reject(&:nil?).sort.first
+        expired = key.subkeys.reject{|k| rule.ignored? k.fingerprint}.map(&:expired).reduce{|a,b| a||b}
+        next_expiry = key.subkeys.reject{|k| rule.ignored? k.fingerprint}.map(&:expires).reject(&:nil?).sort.first
         next_expiry_in_days = (next_expiry.to_datetime - DateTime.now).to_i
         logger.info "Next expiry on #{key.fingerprint} or one of its subkeys in #{next_expiry_in_days} days, no action required" unless expired || next_expiry_in_days < 30
 
@@ -123,7 +127,7 @@ module Expirobot
       {
         status: :success,
         keys_monitored: config.rules.map(&:key),
-        any_expired: config.rules.map{|k| GPGME::Key.get(k.key).subkeys.map(&:expired)}.flatten.reduce{|a,b| a||b}
+        any_expired: config.rules.map{|rule| GPGME::Key.get(rule.key).subkeys.reject{|k| rule.ignored? k.fingerprint}.map(&:expired)}.flatten.reduce{|a,b| a||b}
       }.to_json
     end
 
@@ -136,9 +140,9 @@ module Expirobot
 
       {
         status: :success,
-        expired: GPGME::Key.get(key_id).subkeys.map(&:expired).reduce{|a,b| a||b},
+        expired: GPGME::Key.get(key_id).subkeys.reject{|k| rules.map{|rule| rule.ignored? k.fingerprint}.reduce{|a,b| a&&b}}.map(&:expired).reduce{|a,b| a||b},
         uids: GPGME::Key.get(key_id).uids.map{|uid| "#{uid.name} (#{uid.email})"},
-        keys: GPGME::Key.get(key_id).subkeys.map{|key| {
+        keys_monitored: GPGME::Key.get(key_id).subkeys.reject{|k| rules.map{|rule| rule.ignored? k.fingerprint}.reduce{|a,b| a&&b}}.map{|key| {
           id: key.fingerprint,
           expiry: key.expires?? key.expires.to_i : 0,
           expired: key.expired,
