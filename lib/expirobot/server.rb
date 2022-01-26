@@ -49,16 +49,21 @@ module Expirobot
           logger.warn "Couldn't fetch from keyserver, relying on cached keyring"
         end
 
-        key = GPGME::Key.get key_id
-        logger.info "Found key #{key.fingerprint} #{key.expires}"
-        key.uids.each do |uid|
-          logger.info "... has UID #{uid.name} (#{uid.email})"
-          logger.warn "UID invalid" if uid.invalid?
-          logger.warn "UID revoked" if uid.revoked?
-        end
-        key.subkeys.each do |sub|
-          logger.info "... has subkey #{sub.fingerprint}"
-          logger.warn "Subkey expired on #{sub.expires}" if sub.expired
+        begin
+          key = GPGME::Key.get key_id
+          logger.info "Found key #{key.fingerprint} #{key.expires}"
+          key.uids.each do |uid|
+            logger.info "... has UID #{uid.name} (#{uid.email})"
+            logger.warn "UID invalid" if uid.invalid?
+            logger.warn "UID revoked" if uid.revoked?
+          end
+          key.subkeys.each do |sub|
+            logger.info "... has subkey #{sub.fingerprint}"
+            logger.warn "Subkey expired on #{sub.expires}" if sub.expired
+          end
+        rescue EOFError
+          logger.error "Cannot find key #{key_id}, skipping"
+          config.rules.delete rule
         end
       end
     end
