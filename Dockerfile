@@ -1,4 +1,6 @@
-FROM ruby:3.0-alpine
+FROM ruby:3.0-slim-bullseye
+
+RUN apt update -qq && apt install -y build-essential
 
 ENV APP_HOME /app
 ENV RACK_ENV production
