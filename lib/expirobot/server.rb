@@ -68,7 +68,7 @@ module Expirobot
         key = GPGME::Key.get rule.key
         expired = key.subkeys.map(&:expired).reduce{|a,b| a||b}
         next_expiry = key.subkeys.map(&:expires).reject(&:nil?).sort.first
-        next_expiry_in_days = ((next_expiry.to_datetime - DateTime.now)*24*60*60).to_i / 60 / 60 / 24
+        next_expiry_in_days = (next_expiry.to_datetime - DateTime.now).to_i
         logger.info "Next expiry on #{key.fingerprint} or one of its subkeys in #{next_expiry_in_days} days, no action required" unless expired || next_expiry_in_days < 30
 
         if expired || next_expiry_in_days < 30
